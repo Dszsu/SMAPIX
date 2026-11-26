@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_description">SMAPIX by Dszsu · 基于 SMAPILoader (NRTnarathip)</string>
+
+    <string name="tab_home_nav">主页</string>
+    <string name="tab_mods_title">模组</string>
+    <string name="tab_mods_nav">模组</string>
+    <string name="tab_logs_title">日志</string>
+    <string name="tab_logs_nav">日志</string>
+
+    <string name="log_source_smapi">SMAPI 日志</string>
+    <string name="log_source_bootstrap">引导日志</string>
+
+    <string name="msg_enable_lsposed_first">请先在 LSPosed 中启用 SMAPIX</string>
+    <string name="msg_mod_enabled">已启用 %1$s</string>
+    <string name="msg_mod_disabled">已禁用 %1$s</string>
+    <string name="msg_operation_failed">操作失败</string>
+    <string name="msg_mod_deleted">已删除 %1$s</string>
+    <string name="msg_delete_failed">删除失败</string>
+    <string name="msg_scope_added">已添加游戏作用域</string>
+    <string name="msg_scope_failed">作用域请求失败: %1$s</string>
+    <string name="msg_root_ready">Root 权限已就绪</string>
+    <string name="msg_root_grant_hint">请在 KernelSU / Magisk 中为 SMAPIX 授予 Root 权限</string>
+    <string name="msg_smapi_imported">已导入 %1$s (%2$d KB)</string>
+    <string name="toast_smapi_imported">SMAPI 导入成功</string>
+    <string name="msg_import_failed">导入失败: %1$s</string>
+    <string name="msg_mod_installed_one">已安装 %1$s</string>
+    <plurals name="msg_mod_installed_multi">
+        <item quantity="other">已安装 %1$d 个模组</item>
+    </plurals>
+    <string name="msg_install_failed">安装失败: %1$s</string>
+    <string name="msg_game_not_found">未检测到星露谷物语 (%1$s)</string>
+    <string name="msg_open_browser_failed">无法打开浏览器</string>
+    <string name="msg_log_copied">已复制日志</string>
+
+    <string name="status_framework_inactive">未激活 LSPosed 模块</string>
+    <string name="badge_inactive">未激活</string>
+    <string name="badge_no_scope">缺作用域</string>
+    <string name="badge_checking">检测中</string>
+    <string name="badge_no_root">无 Root</string>
+    <string name="badge_no_game">缺游戏</string>
+    <string name="badge_need_smapi">待导入</string>
+    <string name="badge_ready">就绪</string>
+
+    <string name="headline_no_game">未安装星露谷物语</string>
+    <string name="headline_enable_lsposed">请启用 LSPosed 模块</string>
+    <string name="headline_add_scope">请添加星露谷作用域</string>
+    <string name="headline_grant_root">请授予 Root 权限</string>
+    <string name="headline_import_smapi">请导入 SMAPI 核心包</string>
+    <string name="headline_ready">运行环境已就绪</string>
+
+    <string name="subline_game_framework">星露谷 %1$s · %2$s</string>
+    <string name="subline_game_not_installed">未安装</string>
+    <string name="subline_root_granted">Root 已授权</string>
+    <string name="subline_root_denied">Root 未授权</string>
+
+    <string name="hint_nexus_download_import">Nexus Mods → Files 下载 zip，下方导入</string>
+    <string name="btn_download_smapi">下载 SMAPI</string>
+    <string name="btn_launch_game">启动星露谷</string>
+    <string name="btn_launch_smapi">启动星露谷 (SMAPI)</string>
+    <string name="btn_launch_vanilla">启动星露谷 (原版)</string>
+
+    <string name="section_setup">运行设置</string>
+    <string name="pref_add_scope_title">添加游戏作用域</string>
+    <string name="pref_add_scope_summary">将星露谷加入 SMAPIX 作用域</string>
+    <string name="pref_grant_root_title">授予 Root 权限</string>
+    <string name="pref_grant_root_summary">用于读取模组目录与日志</string>
+    <string name="pref_smapi_zip_title">SMAPI 核心包</string>
+    <string name="pref_smapi_zip_imported_default">已导入</string>
+    <string name="pref_smapi_zip_summary_imported">%1$s · 点击更换</string>
+    <string name="pref_smapi_zip_summary_empty">未导入 · 点击选择 zip</string>
+    <string name="pref_get_smapi_title">获取 SMAPI for Android</string>
+    <string name="pref_get_smapi_summary">Nexus Mods → Files 下载 zip</string>
+    <string name="pref_enable_smapi_title">启用 SMAPI</string>
+    <string name="pref_enable_smapi_summary">开启注入模组，关闭运行原版</string>
+
+    <string name="section_about">关于</string>
+    <string name="about_author">作者: Dszsu</string>
+    <string name="about_based_on">基于 SMAPILoader (NRTnarathip)</string>
+
+    <string name="mods_checking_root">正在检测 Root 权限…</string>
+    <string name="mods_need_root">安装与管理模组需要 Root 权限</string>
+    <string name="mods_none_installed">尚未安装模组</string>
+    <plurals name="mods_count_summary">
+        <item quantity="other">已安装 %1$d 个模组 · 已启用 %2$d 个</item>
+    </plurals>
+    <string name="mods_install_hint">选取 .zip 模组包自动识别 manifest.json 并解压到 Mods 目录</string>
+    <string name="btn_grant_root">授予 Root</string>
+    <string name="btn_processing">处理中…</string>
+    <string name="btn_install_mod_zip">安装模组 (.zip)</string>
+    <string name="btn_refresh">刷新</string>
+    <string name="mods_list_empty_title">模组列表</string>
+    <string name="mods_list_title">模组列表 · 点击查看或删除</string>
+    <string name="mods_empty_desc">Mods 目录为空，点击上方「安装模组 (.zip)」即可直接安装。</string>
+
+    <string name="mod_dialog_version">版本 %1$s</string>
+    <string name="mod_dialog_folder">目录：Mods/%1$s</string>
+    <string name="mod_dialog_confirm_delete">将彻底删除 Mods/%1$s，确认继续？</string>
+    <string name="btn_cancel">取消</string>
+    <string name="btn_confirm_delete">确认删除</string>
+    <string name="btn_disable">禁用</string>
+    <string name="btn_enable">启用</string>
+    <string name="btn_delete">删除</string>
+    <string name="btn_close">关闭</string>
+
+    <string name="mod_row_disabled">已禁用</string>
+    <string name="mod_row_folder_fallback">模组包目录</string>
+
+    <string name="btn_copy_log">复制日志</string>
+    <string name="logs_loading">正在读取日志…</string>
+    <string name="logs_no_root">授予 Root 权限后可查看 SMAPI-latest.txt 与引导日志。</string>
+    <string name="logs_empty">暂无%1$s，启动一次星露谷后会在此生成记录。</string>
+
+    <plurals name="smapi_version_files_fallback">
+        <item quantity="other">SMAPI-Android (%1$d 文件)</item>
+    </plurals>
+    <string name="err_zip_missing_smapi_dll">所选压缩包不含 StardewModdingAPI.dll，请选择 SMAPI-Android-*.zip</string>
+    <string name="err_lsposed_service_missing">LSPosed 服务未连接，请先在 LSPosed 中启用 SMAPIX</string>
+    <string name="err_zip_missing_manifest">压缩包内未找到 manifest.json，请选择有效的 SMAPI zip 模组包</string>
+    <string name="err_root_required_mods">未获得 Root 权限，无法写入 Mods 目录</string>
+    <string name="err_root_copy_mods_failed">Root 复制模组目录失败 (exit=%1$d)</string>
+    <string name="err_invalid_mod_folder">无效的模组目录名</string>
+    <string name="err_mod_folder_not_found">目录不存在</string>
+    <string name="err_mod_conflict_exists">目标名称已存在冲突目录: %1$s</string>
+    <string name="err_toggle_failed">切换状态失败</string>
+    <string name="err_delete_mod_failed">删除失败</string>
+    <string name="err_read_archive_failed">无法读取所选压缩包</string>
+    <string name="err_file_empty_invalid">所选文件为空或无效</string>
+    <string name="err_not_zip_archive">仅支持 .zip 格式模组包（检测到非 zip 文件，如 rar/7z 请先转为 zip）</string>
+    <string name="err_invalid_folder_name">非法目录名</string>
+    <string name="err_root_cmd_timeout">Root 命令执行超时</string>
+</resources>

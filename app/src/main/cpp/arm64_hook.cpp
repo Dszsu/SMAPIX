@@ -49,7 +49,7 @@ const Elf64_Sym *LookupGnuHash(
     if (nbuckets == 0) return nullptr;
 
     const auto *bloom = reinterpret_cast<const uint64_t *>(gh + 4);
-    const uint32_t *buckets = reinterpret_cast<const uint32_t *>(bloom + bloom_size);
+    const auto *buckets = reinterpret_cast<const uint32_t *>(bloom + bloom_size);
     const uint32_t *chains = buckets + nbuckets;
 
     uint32_t hash = GnuHash(name);

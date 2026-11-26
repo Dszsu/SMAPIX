@@ -1,8 +1,8 @@
 package io.github.dszsu.smapix.xposed
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.ApplicationInfo
-import android.os.ParcelFileDescriptor
 import android.util.Log
 import io.github.dszsu.smapix.BuildConfig
 import io.github.dszsu.smapix.nativebridge.NativeBridge
@@ -137,6 +137,7 @@ class SmapiXposedModule : XposedModule() {
         loadModuleNativeLibraries()
     }
 
+    @SuppressLint("UnsafeDynamicallyLoadedCode")
     private fun loadModuleNativeLibraries() {
         val nativeDir = moduleApplicationInfo.nativeLibraryDir
         val extractedFile = File(nativeDir, "libsmapix.so")
@@ -268,28 +269,24 @@ class SmapiXposedModule : XposedModule() {
         }
 
         try {
-            val pfd: ParcelFileDescriptor? = openRemoteFile(REMOTE_SMAPI_ZIP)
-            if (pfd != null) {
-                pfd.use {
-                    val tmp = File(lspDir, "smapi_android.tmp.zip")
-                    FileInputStream(it.fileDescriptor).use { input ->
-                        FileOutputStream(tmp).use { output -> input.copyTo(output) }
-                    }
-                    if (tmp.length() > 0) {
-                        if (localZip.exists()) localZip.delete()
-                        tmp.renameTo(localZip)
-                        val effectiveStamp = remoteStamp.ifEmpty { "${localZip.length()}:${localZip.lastModified()}" }
-                        localStampFile.writeText(effectiveStamp)
-                        preparedSmapiZip = localZip
-                        preparedSmapiStamp = effectiveStamp
-                        Log.i(TAG, "Synced SMAPI archive from remote file (${localZip.length()} bytes)")
-                        return
-                    } else {
-                        tmp.delete()
-                    }
+            val pfd = openRemoteFile(REMOTE_SMAPI_ZIP)
+            pfd.use {
+                val tmp = File(lspDir, "smapi_android.tmp.zip")
+                FileInputStream(it.fileDescriptor).use { input ->
+                    FileOutputStream(tmp).use { output -> input.copyTo(output) }
                 }
-            } else {
-                Log.i(TAG, "Remote SMAPI archive not created yet")
+                if (tmp.length() > 0) {
+                    if (localZip.exists()) localZip.delete()
+                    tmp.renameTo(localZip)
+                    val effectiveStamp = remoteStamp.ifEmpty { "${localZip.length()}:${localZip.lastModified()}" }
+                    localStampFile.writeText(effectiveStamp)
+                    preparedSmapiZip = localZip
+                    preparedSmapiStamp = effectiveStamp
+                    Log.i(TAG, "Synced SMAPI archive from remote file (${localZip.length()} bytes)")
+                    return
+                } else {
+                    tmp.delete()
+                }
             }
         } catch (t: Throwable) {
             Log.i(TAG, "Remote SMAPI archive not active (${t.javaClass.simpleName}: ${t.message})")

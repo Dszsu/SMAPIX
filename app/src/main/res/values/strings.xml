@@ -1,5 +1,137 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">SMAPIX</string>
+    <string name="app_name" translatable="false">SMAPIX</string>
     <string name="app_description">SMAPIX by Dszsu · Base: SMAPILoader (NRTnarathip)</string>
+
+    <string name="tab_home_title" translatable="false">SMAPIX</string>
+    <string name="tab_home_nav">Home</string>
+    <string name="tab_mods_title">Mods</string>
+    <string name="tab_mods_nav">Mods</string>
+    <string name="tab_logs_title">Logs</string>
+    <string name="tab_logs_nav">Logs</string>
+
+    <string name="log_source_smapi">SMAPI Log</string>
+    <string name="log_source_bootstrap">Bootstrap Log</string>
+
+    <string name="msg_enable_lsposed_first">Please enable SMAPIX in LSPosed first</string>
+    <string name="msg_mod_enabled">Enabled %1$s</string>
+    <string name="msg_mod_disabled">Disabled %1$s</string>
+    <string name="msg_operation_failed">Operation failed</string>
+    <string name="msg_mod_deleted">Deleted %1$s</string>
+    <string name="msg_delete_failed">Delete failed</string>
+    <string name="msg_scope_added">Added game scope</string>
+    <string name="msg_scope_failed">Scope request failed: %1$s</string>
+    <string name="msg_root_ready">Root permission ready</string>
+    <string name="msg_root_grant_hint">Please grant Root permission to SMAPIX in KernelSU / Magisk</string>
+    <string name="msg_smapi_imported">Imported %1$s (%2$d KB)</string>
+    <string name="toast_smapi_imported">SMAPI imported</string>
+    <string name="msg_import_failed">Import failed: %1$s</string>
+    <string name="msg_mod_installed_one">Installed %1$s</string>
+    <plurals name="msg_mod_installed_multi">
+        <item quantity="one">Installed %1$d mod</item>
+        <item quantity="other">Installed %1$d mods</item>
+    </plurals>
+    <string name="msg_install_failed">Install failed: %1$s</string>
+    <string name="msg_game_not_found">Stardew Valley not detected (%1$s)</string>
+    <string name="msg_open_browser_failed">Unable to open browser</string>
+    <string name="msg_log_copied">Log copied</string>
+
+    <string name="status_framework_inactive">LSPosed module inactive</string>
+    <string name="badge_inactive">Inactive</string>
+    <string name="badge_no_scope">No Scope</string>
+    <string name="badge_checking">Checking</string>
+    <string name="badge_no_root">No Root</string>
+    <string name="badge_no_game">No Game</string>
+    <string name="badge_need_smapi">No SMAPI</string>
+    <string name="badge_ready">Ready</string>
+
+    <string name="headline_no_game">Stardew Valley not installed</string>
+    <string name="headline_enable_lsposed">Enable SMAPIX in LSPosed</string>
+    <string name="headline_add_scope">Add Stardew Valley to scope</string>
+    <string name="headline_grant_root">Grant Root permission</string>
+    <string name="headline_import_smapi">Import SMAPI core archive</string>
+    <string name="headline_ready">Environment ready</string>
+
+    <string name="subline_game_framework">Stardew %1$s · %2$s</string>
+    <string name="subline_game_not_installed">Not installed</string>
+    <string name="subline_root_granted">Root granted</string>
+    <string name="subline_root_denied">Root denied</string>
+
+    <string name="hint_nexus_download_import">Download zip from Nexus Mods → Files and import below</string>
+    <string name="btn_download_smapi">Get SMAPI</string>
+    <string name="btn_launch_game">Launch Game</string>
+    <string name="btn_launch_smapi">Launch Stardew (SMAPI)</string>
+    <string name="btn_launch_vanilla">Launch Stardew (Vanilla)</string>
+
+    <string name="section_setup">Setup</string>
+    <string name="pref_add_scope_title">Add Game Scope</string>
+    <string name="pref_add_scope_summary">Add Stardew Valley to SMAPIX scope</string>
+    <string name="pref_grant_root_title">Grant Root Permission</string>
+    <string name="pref_grant_root_summary">Used to access Mods directory and logs</string>
+    <string name="pref_smapi_zip_title">SMAPI Core Archive</string>
+    <string name="pref_smapi_zip_imported_default">Imported</string>
+    <string name="pref_smapi_zip_summary_imported">%1$s · Tap to replace</string>
+    <string name="pref_smapi_zip_summary_empty">Not imported · Tap to select zip</string>
+    <string name="pref_get_smapi_title">Get SMAPI for Android</string>
+    <string name="pref_get_smapi_summary">Download zip from Nexus Mods → Files</string>
+    <string name="pref_enable_smapi_title">Enable SMAPI</string>
+    <string name="pref_enable_smapi_summary">On: inject mods · Off: launch vanilla game</string>
+
+    <string name="section_about">About</string>
+    <string name="about_author">Author: Dszsu</string>
+    <string name="about_based_on">Based on SMAPILoader (NRTnarathip)</string>
+
+    <string name="mods_checking_root">Checking Root permission…</string>
+    <string name="mods_need_root">Root permission required to install and manage mods</string>
+    <string name="mods_none_installed">No mods installed</string>
+    <plurals name="mods_count_summary">
+        <item quantity="one">%1$d mod installed · %2$d enabled</item>
+        <item quantity="other">%1$d mods installed · %2$d enabled</item>
+    </plurals>
+    <string name="mods_install_hint">Pick a .zip mod archive to detect manifest.json and extract to Mods</string>
+    <string name="btn_grant_root">Grant Root</string>
+    <string name="btn_processing">Working…</string>
+    <string name="btn_install_mod_zip">Install Mod (.zip)</string>
+    <string name="btn_refresh">Refresh</string>
+    <string name="mods_list_empty_title">Mod List</string>
+    <string name="mods_list_title">Mod List · Tap for details or remove</string>
+    <string name="mods_empty_desc">Mods directory is empty. Tap \"Install Mod (.zip)\" above to install.</string>
+
+    <string name="mod_dialog_version">Version %1$s</string>
+    <string name="mod_dialog_folder">Folder: Mods/%1$s</string>
+    <string name="mod_dialog_confirm_delete">Permanently delete Mods/%1$s?</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_confirm_delete">Confirm Delete</string>
+    <string name="btn_disable">Disable</string>
+    <string name="btn_enable">Enable</string>
+    <string name="btn_delete">Delete</string>
+    <string name="btn_close">Close</string>
+
+    <string name="mod_row_disabled">Disabled</string>
+    <string name="mod_row_folder_fallback">Mod folder</string>
+
+    <string name="btn_copy_log">Copy Log</string>
+    <string name="logs_loading">Loading logs…</string>
+    <string name="logs_no_root">Grant Root permission to view SMAPI-latest.txt and bootstrap logs.</string>
+    <string name="logs_empty">No %1$s yet. Launch Stardew Valley once to generate logs.</string>
+
+    <plurals name="smapi_version_files_fallback">
+        <item quantity="one">SMAPI-Android (%1$d file)</item>
+        <item quantity="other">SMAPI-Android (%1$d files)</item>
+    </plurals>
+    <string name="err_zip_missing_smapi_dll">StardewModdingAPI.dll not found in archive. Please pick SMAPI-Android-*.zip</string>
+    <string name="err_lsposed_service_missing">LSPosed service not connected. Please enable SMAPIX in LSPosed first</string>
+    <string name="err_zip_missing_manifest">manifest.json not found in archive. Please select a valid SMAPI zip mod</string>
+    <string name="err_root_required_mods">Root permission not granted; cannot write to Mods directory</string>
+    <string name="err_root_copy_mods_failed">Root failed to copy mod directory (exit=%1$d)</string>
+    <string name="err_invalid_mod_folder">Invalid mod folder name</string>
+    <string name="err_mod_folder_not_found">Directory does not exist</string>
+    <string name="err_mod_conflict_exists">Conflicting folder already exists: %1$s</string>
+    <string name="err_toggle_failed">Failed to toggle mod status</string>
+    <string name="err_delete_mod_failed">Delete failed</string>
+    <string name="err_read_archive_failed">Unable to read selected archive</string>
+    <string name="err_file_empty_invalid">Selected file is empty or invalid</string>
+    <string name="err_not_zip_archive">Only .zip mod archives are supported (non-zip detected; convert rar/7z to zip first)</string>
+    <string name="err_invalid_folder_name">Illegal folder name</string>
+    <string name="err_root_cmd_timeout">Root command timed out</string>
 </resources>

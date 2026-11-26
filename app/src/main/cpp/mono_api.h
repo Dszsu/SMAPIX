@@ -12,9 +12,9 @@ using MonoString = void;
 using MonoObject = void;
 
 struct MonoApi {
-    MonoDomain *(*mono_get_root_domain)(void) = nullptr;
-    MonoDomain *(*mono_domain_get)(void) = nullptr;
-    MonoThread *(*mono_thread_current)(void) = nullptr;
+    MonoDomain *(*mono_get_root_domain)() = nullptr;
+    MonoDomain *(*mono_domain_get)() = nullptr;
+    MonoThread *(*mono_thread_current)() = nullptr;
     MonoDomain *(*mono_jit_thread_attach)(MonoDomain *domain) = nullptr;
     MonoAssembly *(*mono_domain_assembly_open)(MonoDomain *domain, const char *name) = nullptr;
     MonoAssembly *(*mono_assembly_open)(const char *filename, int *status) = nullptr;

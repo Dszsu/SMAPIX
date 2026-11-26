@@ -1,11 +1,11 @@
 [versions]
-agp = "9.5.2"
+agp = "9.5.3"
 kotlin = "2.4.21"
 xposed-api = "102.0.0"
 xposed-service = "102.0.0"
-shadowhook = "2.0.1"
+core-ktx = "1.19.1"
 activity-compose = "1.13.0"
-miuix = "0.9.5-beta02"
+miuix = "0.9.4"
 hiddenapibypass = "6.2"
 junit = "4.13.2"
 
@@ -16,7 +16,7 @@ compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "
 [libraries]
 libxposed-api = { group = "io.github.libxposed", name = "api", version.ref = "xposed-api" }
 libxposed-service = { group = "io.github.libxposed", name = "service", version.ref = "xposed-service" }
-shadowhook = { group = "com.bytedance.android", name = "shadowhook", version.ref = "shadowhook" }
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
 compose-runtime = { group = "androidx.compose.runtime", name = "runtime" }
 kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }

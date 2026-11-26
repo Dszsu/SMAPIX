@@ -41,12 +41,17 @@ import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
+import androidx.annotation.StringRes
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import io.github.dszsu.smapix.xposed.SmapiXposedModule
 import io.github.libxposed.service.XposedService
 import kotlinx.coroutines.Dispatchers
@@ -75,15 +80,15 @@ import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
-private enum class MainTab(val title: String, val navLabel: String) {
-    Home("SMAPIX", "主页"),
-    Mods("模组", "模组"),
-    Logs("日志", "日志")
+private enum class MainTab(@param:StringRes val titleRes: Int, @param:StringRes val navLabelRes: Int) {
+    Home(R.string.tab_home_title, R.string.tab_home_nav),
+    Mods(R.string.tab_mods_title, R.string.tab_mods_nav),
+    Logs(R.string.tab_logs_title, R.string.tab_logs_nav)
 }
 
-private enum class LogSource(val label: String) {
-    Smapi("SMAPI 日志"),
-    Bootstrap("引导日志")
+private enum class LogSource(@param:StringRes val labelRes: Int) {
+    Smapi(R.string.log_source_smapi),
+    Bootstrap(R.string.log_source_bootstrap)
 }
 
 class MainActivity : ComponentActivity() {
@@ -145,26 +150,29 @@ class MainActivity : ComponentActivity() {
                     onToggleSmapi = { enabled ->
                         val prefs = boundService?.getRemotePreferences(SmapiXposedModule.PREFS_CONFIG)
                         if (prefs != null) {
-                            prefs.edit().putBoolean(SmapiXposedModule.KEY_ENABLE_SMAPI, enabled).apply()
+                            prefs.edit { putBoolean(SmapiXposedModule.KEY_ENABLE_SMAPI, enabled) }
                             refreshCounter++
                         } else {
-                            toast("请先在 LSPosed 中启用 SMAPIX")
+                            toast(getString(R.string.msg_enable_lsposed_first))
                         }
                     },
                     onToggleMod = { mod, enable ->
                         scope.launch {
                             modBusy = true
                             val res = withContext(Dispatchers.IO) {
-                                SmapiPackageHelper.setModEnabled(mod.folderName, enable)
+                                SmapiPackageHelper.setModEnabled(this@MainActivity, mod.folderName, enable)
                             }
                             modBusy = false
                             res.onSuccess {
-                                val msg = if (enable) "已启用 ${mod.displayName}" else "已禁用 ${mod.displayName}"
+                                val msg = getString(
+                                    if (enable) R.string.msg_mod_enabled else R.string.msg_mod_disabled,
+                                    mod.displayName
+                                )
                                 modStatusMessage = msg
                                 toast(msg)
                                 refreshCounter++
                             }.onFailure { err ->
-                                val msg = err.message ?: "操作失败"
+                                val msg = err.message ?: getString(R.string.msg_operation_failed)
                                 modStatusMessage = msg
                                 toast(msg)
                             }
@@ -174,16 +182,16 @@ class MainActivity : ComponentActivity() {
                         scope.launch {
                             modBusy = true
                             val res = withContext(Dispatchers.IO) {
-                                SmapiPackageHelper.deleteModFolder(mod.folderName)
+                                SmapiPackageHelper.deleteModFolder(this@MainActivity, mod.folderName)
                             }
                             modBusy = false
                             res.onSuccess {
-                                val msg = "已删除 ${mod.displayName}"
+                                val msg = getString(R.string.msg_mod_deleted, mod.displayName)
                                 modStatusMessage = msg
                                 toast(msg)
                                 refreshCounter++
                             }.onFailure { err ->
-                                val msg = err.message ?: "删除失败"
+                                val msg = err.message ?: getString(R.string.msg_delete_failed)
                                 modStatusMessage = msg
                                 toast(msg)
                             }
@@ -191,7 +199,7 @@ class MainActivity : ComponentActivity() {
                     },
                     onRequestScope = {
                         val svc = boundService ?: run {
-                            toast("请先在 LSPosed 中启用 SMAPIX")
+                            toast(getString(R.string.msg_enable_lsposed_first))
                             return@SmapixAppScreen
                         }
                         svc.requestScope(
@@ -199,13 +207,15 @@ class MainActivity : ComponentActivity() {
                             object : XposedService.OnScopeEventListener {
                                 override fun onScopeRequestApproved(approved: List<String>) {
                                     runOnUiThread {
-                                        homeStatusMessage = "已添加游戏作用域"
+                                        homeStatusMessage = getString(R.string.msg_scope_added)
                                         refreshCounter++
                                     }
                                 }
 
                                 override fun onScopeRequestFailed(message: String) {
-                                    runOnUiThread { homeStatusMessage = "作用域请求失败: $message" }
+                                    runOnUiThread {
+                                        homeStatusMessage = getString(R.string.msg_scope_failed, message)
+                                    }
                                 }
                             }
                         )
@@ -216,15 +226,15 @@ class MainActivity : ComponentActivity() {
                                 SmapiPackageHelper.requestRootPermission()
                             }
                             homeStatusMessage = if (granted) {
-                                "Root 权限已就绪"
+                                getString(R.string.msg_root_ready)
                             } else {
-                                "请在 KernelSU / Magisk 中为 SMAPIX 授予 Root 权限"
+                                getString(R.string.msg_root_grant_hint)
                             }
                             refreshCounter++
                         }
                     },
                     onLaunchGame = { launchStardewValley() },
-                    onOpenNexus = { openExternalUrl(URL_NEXUS_SMAPI) },
+                    onOpenNexus = { openNexusMods() },
                     onCopyLog = { label, text -> copyToClipboard(label, text) },
                     onRefresh = { refreshCounter++ }
                 )
@@ -245,12 +255,13 @@ class MainActivity : ComponentActivity() {
     private fun handlePickedSmapiZip(uri: Uri) {
         val result = SmapiPackageHelper.importSmapiZip(this, uri, boundService)
         result.onSuccess { info ->
-            homeStatusMessage = "已导入 ${info.versionLabel} (${info.sizeBytes / 1024} KB)"
-            toast("SMAPI 导入成功")
+            homeStatusMessage = getString(R.string.msg_smapi_imported, info.versionLabel, info.sizeBytes / 1024)
+            toast(getString(R.string.toast_smapi_imported))
             refreshCounter++
         }.onFailure { err ->
-            homeStatusMessage = "导入失败: ${err.message}"
-            toast("导入失败: ${err.message}")
+            val msg = getString(R.string.msg_import_failed, err.message ?: "")
+            homeStatusMessage = msg
+            toast(msg)
         }
     }
 
@@ -263,15 +274,19 @@ class MainActivity : ComponentActivity() {
                 modBusy = false
                 result.onSuccess { installed ->
                     val summary = if (installed.installedNames.size == 1) {
-                        "已安装 ${installed.installedNames.first()}"
+                        getString(R.string.msg_mod_installed_one, installed.installedNames.first())
                     } else {
-                        "已安装 ${installed.installedNames.size} 个模组"
+                        resources.getQuantityString(
+                            R.plurals.msg_mod_installed_multi,
+                            installed.installedNames.size,
+                            installed.installedNames.size
+                        )
                     }
                     modStatusMessage = summary
                     toast(summary)
                     refreshCounter++
                 }.onFailure { err ->
-                    val msg = "安装失败: ${err.message}"
+                    val msg = getString(R.string.msg_install_failed, err.message ?: "")
                     modStatusMessage = msg
                     toast(msg)
                 }
@@ -282,25 +297,26 @@ class MainActivity : ComponentActivity() {
     private fun launchStardewValley() {
         val intent = packageManager.getLaunchIntentForPackage(SmapiXposedModule.TARGET_PACKAGE)
         if (intent == null) {
-            toast("未检测到星露谷物语 (${SmapiXposedModule.TARGET_PACKAGE})")
+            toast(getString(R.string.msg_game_not_found, SmapiXposedModule.TARGET_PACKAGE))
             return
         }
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         startActivity(intent)
     }
 
-    private fun openExternalUrl(url: String) {
+    private fun openNexusMods() {
         runCatching {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            startActivity(Intent(Intent.ACTION_VIEW, URL_NEXUS_SMAPI.toUri()))
         }.onFailure {
-            toast("无法打开浏览器")
+            toast(getString(R.string.msg_open_browser_failed))
         }
     }
 
     private fun copyToClipboard(label: String, text: String) {
         val cm = getSystemService(ClipboardManager::class.java) ?: return
+        @Suppress("UsePropertyAccessSyntax")
         cm.setPrimaryClip(ClipData.newPlainText(label, text))
-        toast("已复制日志")
+        toast(getString(R.string.msg_log_copied))
     }
 
     private fun toast(msg: String) {
@@ -366,8 +382,7 @@ private fun SmapixAppScreen(
         val gameVer = SmapiPackageHelper.readStardewVersion(context)
         ModuleSnapshot(
             connected = service != null,
-            frameworkDesc = service?.let { "${it.frameworkName} ${it.frameworkVersion} (API ${it.apiVersion})" }
-                ?: "未激活 LSPosed 模块",
+            frameworkDesc = service?.let { "${it.frameworkName} ${it.frameworkVersion} (API ${it.apiVersion})" },
             inScope = inScope,
             enableSmapi = enableSmapi,
             smapiLabel = smapiLabel,
@@ -379,7 +394,7 @@ private fun SmapixAppScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = currentTab.title,
+                title = stringResource(currentTab.titleRes),
                 scrollBehavior = activeScrollBehavior
             )
         },
@@ -389,19 +404,19 @@ private fun SmapixAppScreen(
                     selected = currentTab == MainTab.Home,
                     onClick = { currentTab = MainTab.Home },
                     icon = TabIcons.Home,
-                    label = MainTab.Home.navLabel
+                    label = stringResource(MainTab.Home.navLabelRes)
                 )
                 NavigationBarItem(
                     selected = currentTab == MainTab.Mods,
                     onClick = { currentTab = MainTab.Mods },
                     icon = TabIcons.Mods,
-                    label = MainTab.Mods.navLabel
+                    label = stringResource(MainTab.Mods.navLabelRes)
                 )
                 NavigationBarItem(
                     selected = currentTab == MainTab.Logs,
                     onClick = { currentTab = MainTab.Logs },
                     icon = TabIcons.Logs,
-                    label = MainTab.Logs.navLabel
+                    label = stringResource(MainTab.Logs.navLabelRes)
                 )
             }
         }
@@ -479,35 +494,38 @@ private fun HomeTabContent(
         moduleState.gameVersion != null &&
         (!moduleState.enableSmapi || moduleState.hasSmapiZip)
 
-    val badgeText = when {
-        !moduleState.connected -> "未激活"
-        !moduleState.inScope -> "缺作用域"
-        rootState == null -> "检测中"
-        !hasRoot -> "无 Root"
-        moduleState.gameVersion == null -> "缺游戏"
-        moduleState.enableSmapi && !moduleState.hasSmapiZip -> "待导入"
-        else -> "就绪"
-    }
-
-    val headlineText = when {
-        moduleState.gameVersion == null -> "未安装星露谷物语"
-        !moduleState.connected -> "请启用 LSPosed 模块"
-        !moduleState.inScope -> "请添加星露谷作用域"
-        rootState != null && !hasRoot -> "请授予 Root 权限"
-        moduleState.enableSmapi && !moduleState.hasSmapiZip -> "请导入 SMAPI 核心包"
-        else -> "运行环境已就绪"
-    }
-
-    val sublineText = buildString {
-        append("星露谷 ")
-        append(moduleState.gameVersion ?: "未安装")
-        append(" · ")
-        append(moduleState.frameworkDesc)
-        if (rootState != null) {
-            append(" · ")
-            append(if (hasRoot) "Root 已授权" else "Root 未授权")
+    val badgeText = stringResource(
+        when {
+            !moduleState.connected -> R.string.badge_inactive
+            !moduleState.inScope -> R.string.badge_no_scope
+            rootState == null -> R.string.badge_checking
+            !hasRoot -> R.string.badge_no_root
+            moduleState.gameVersion == null -> R.string.badge_no_game
+            moduleState.enableSmapi && !moduleState.hasSmapiZip -> R.string.badge_need_smapi
+            else -> R.string.badge_ready
         }
+    )
+
+    val headlineText = stringResource(
+        when {
+            moduleState.gameVersion == null -> R.string.headline_no_game
+            !moduleState.connected -> R.string.headline_enable_lsposed
+            !moduleState.inScope -> R.string.headline_add_scope
+            rootState != null && !hasRoot -> R.string.headline_grant_root
+            moduleState.enableSmapi && !moduleState.hasSmapiZip -> R.string.headline_import_smapi
+            else -> R.string.headline_ready
+        }
+    )
+
+    val gameVerLabel = moduleState.gameVersion ?: stringResource(R.string.subline_game_not_installed)
+    val frameworkLabel = moduleState.frameworkDesc ?: stringResource(R.string.status_framework_inactive)
+    val rootSuffix = when (rootState) {
+        null -> ""
+        else -> " · " + stringResource(
+            if (hasRoot) R.string.subline_root_granted else R.string.subline_root_denied
+        )
     }
+    val sublineText = stringResource(R.string.subline_game_framework, gameVerLabel, frameworkLabel) + rootSuffix
 
     LazyColumn(
         state = listState,
@@ -573,7 +591,7 @@ private fun HomeTabContent(
                     )
                 } else if (moduleState.enableSmapi && !moduleState.hasSmapiZip) {
                     Text(
-                        text = "Nexus Mods → Files 下载 zip，下方导入",
+                        text = stringResource(R.string.hint_nexus_download_import),
                         modifier = Modifier.padding(top = 10.dp),
                         fontSize = 12.sp,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary
@@ -588,13 +606,13 @@ private fun HomeTabContent(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         TextButton(
-                            text = "下载 SMAPI",
+                            text = stringResource(R.string.btn_download_smapi),
                             onClick = onOpenNexus,
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.textButtonColors()
                         )
                         TextButton(
-                            text = "启动星露谷",
+                            text = stringResource(R.string.btn_launch_game),
                             onClick = onLaunchGame,
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.textButtonColorsPrimary()
@@ -602,7 +620,9 @@ private fun HomeTabContent(
                     }
                 } else {
                     TextButton(
-                        text = if (moduleState.enableSmapi) "启动星露谷 (SMAPI)" else "启动星露谷 (原版)",
+                        text = stringResource(
+                            if (moduleState.enableSmapi) R.string.btn_launch_smapi else R.string.btn_launch_vanilla
+                        ),
                         onClick = onLaunchGame,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -614,42 +634,46 @@ private fun HomeTabContent(
         }
 
         item(key = "section-setup") {
-            SectionTitle(text = "运行设置")
+            SectionTitle(text = stringResource(R.string.section_setup))
         }
 
         item(key = "setup-card") {
             Card(modifier = Modifier.fillMaxWidth()) {
                 if (moduleState.connected && !moduleState.inScope) {
                     ArrowPreference(
-                        title = "添加游戏作用域",
-                        summary = "将星露谷加入 SMAPIX 作用域",
+                        title = stringResource(R.string.pref_add_scope_title),
+                        summary = stringResource(R.string.pref_add_scope_summary),
                         onClick = onRequestScope
                     )
                 }
                 if (rootState != null && !hasRoot) {
                     ArrowPreference(
-                        title = "授予 Root 权限",
-                        summary = "用于读取模组目录与日志",
+                        title = stringResource(R.string.pref_grant_root_title),
+                        summary = stringResource(R.string.pref_grant_root_summary),
                         onClick = onRequestRoot
                     )
                 }
+                val smapiSummary = if (moduleState.hasSmapiZip) {
+                    val label = moduleState.smapiLabel.ifEmpty {
+                        stringResource(R.string.pref_smapi_zip_imported_default)
+                    }
+                    stringResource(R.string.pref_smapi_zip_summary_imported, label)
+                } else {
+                    stringResource(R.string.pref_smapi_zip_summary_empty)
+                }
                 ArrowPreference(
-                    title = "SMAPI 核心包",
-                    summary = if (moduleState.hasSmapiZip) {
-                        "${moduleState.smapiLabel.ifEmpty { "已导入" }} · 点击更换"
-                    } else {
-                        "未导入 · 点击选择 zip"
-                    },
+                    title = stringResource(R.string.pref_smapi_zip_title),
+                    summary = smapiSummary,
                     onClick = onImportSmapiZip
                 )
                 ArrowPreference(
-                    title = "获取 SMAPI for Android",
-                    summary = "Nexus Mods → Files 下载 zip",
+                    title = stringResource(R.string.pref_get_smapi_title),
+                    summary = stringResource(R.string.pref_get_smapi_summary),
                     onClick = onOpenNexus
                 )
                 SwitchPreference(
-                    title = "启用 SMAPI",
-                    summary = "开启注入模组，关闭运行原版",
+                    title = stringResource(R.string.pref_enable_smapi_title),
+                    summary = stringResource(R.string.pref_enable_smapi_summary),
                     checked = moduleState.enableSmapi,
                     onCheckedChange = onToggleSmapi
                 )
@@ -657,7 +681,7 @@ private fun HomeTabContent(
         }
 
         item(key = "section-about") {
-            SectionTitle(text = "关于")
+            SectionTitle(text = stringResource(R.string.section_about))
         }
 
         item(key = "about-card") {
@@ -667,13 +691,13 @@ private fun HomeTabContent(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = "作者:Dszsu",
+                        text = stringResource(R.string.about_author),
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium,
                         color = MiuixTheme.colorScheme.onSurfaceContainer
                     )
                     Text(
-                        text = "基于SMAPILoader (NRTnarathip)",
+                        text = stringResource(R.string.about_based_on),
                         fontSize = 13.sp,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary
                     )
@@ -721,17 +745,17 @@ private fun ModsTabContent(
             ) {
                 Text(
                     text = when {
-                        rootState == null -> "正在检测 Root 权限..."
-                        !hasRoot -> "安装与管理模组需要 Root 权限"
-                        mods.isEmpty() -> "尚未安装模组"
-                        else -> "已安装 ${mods.size} 个模组 · 已启用 $enabledCount 个"
+                        rootState == null -> stringResource(R.string.mods_checking_root)
+                        !hasRoot -> stringResource(R.string.mods_need_root)
+                        mods.isEmpty() -> stringResource(R.string.mods_none_installed)
+                        else -> pluralStringResource(R.plurals.mods_count_summary, mods.size, mods.size, enabledCount)
                     },
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = MiuixTheme.colorScheme.onSurfaceContainer
                 )
                 Text(
-                    text = "选取 .zip 模组包自动识别 manifest.json 并解压到 Mods 目录",
+                    text = stringResource(R.string.mods_install_hint),
                     modifier = Modifier.padding(top = 4.dp),
                     fontSize = 12.sp,
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary
@@ -753,14 +777,14 @@ private fun ModsTabContent(
                 ) {
                     if (rootState != null && !hasRoot) {
                         TextButton(
-                            text = "授予 Root",
+                            text = stringResource(R.string.btn_grant_root),
                             onClick = onRequestRoot,
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.textButtonColorsPrimary()
                         )
                     } else {
                         TextButton(
-                            text = if (modBusy) "处理中..." else "安装模组 (.zip)",
+                            text = stringResource(if (modBusy) R.string.btn_processing else R.string.btn_install_mod_zip),
                             onClick = onInstallModZip,
                             enabled = hasRoot && !modBusy,
                             modifier = Modifier.weight(1f),
@@ -768,7 +792,7 @@ private fun ModsTabContent(
                         )
                     }
                     TextButton(
-                        text = "刷新",
+                        text = stringResource(R.string.btn_refresh),
                         onClick = onRefresh,
                         colors = ButtonDefaults.textButtonColors()
                     )
@@ -779,7 +803,9 @@ private fun ModsTabContent(
         if (hasRoot) {
             item(key = "mods-section-title") {
                 SectionTitle(
-                    text = if (mods.isEmpty()) "模组列表" else "模组列表 · 点击查看或删除"
+                    text = stringResource(
+                        if (mods.isEmpty()) R.string.mods_list_empty_title else R.string.mods_list_title
+                    )
                 )
             }
 
@@ -790,7 +816,7 @@ private fun ModsTabContent(
                         insideMargin = PaddingValues(16.dp)
                     ) {
                         Text(
-                            text = "Mods 目录为空，点击上方「安装模组 (.zip)」即可直接安装。",
+                            text = stringResource(R.string.mods_empty_desc),
                             fontSize = 13.sp,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary
                         )
@@ -836,28 +862,39 @@ private fun ModsTabContent(
     }
 
     val dialogMod = activeMod
+    val versionLine = if (dialogMod != null && dialogMod.version.isNotEmpty()) {
+        stringResource(R.string.mod_dialog_version, dialogMod.version)
+    } else {
+        ""
+    }
+    val folderLine = if (dialogMod != null) {
+        stringResource(R.string.mod_dialog_folder, dialogMod.folderName)
+    } else {
+        ""
+    }
+    val dialogSummary = dialogMod?.let { m ->
+        buildString {
+            if (versionLine.isNotEmpty()) append(versionLine)
+            if (m.author.isNotEmpty()) {
+                if (isNotEmpty()) append(" · ")
+                append(m.author)
+            }
+            if (m.uniqueId.isNotEmpty()) {
+                if (isNotEmpty()) append('\n')
+                append(m.uniqueId)
+            }
+            if (isNotEmpty()) append('\n')
+            append(folderLine)
+            if (m.description.isNotEmpty()) {
+                append("\n\n")
+                append(m.description)
+            }
+        }
+    }
     OverlayDialog(
         show = showModDialog && dialogMod != null,
         title = dialogMod?.displayName,
-        summary = dialogMod?.let { m ->
-            buildString {
-                if (m.version.isNotEmpty()) append("版本 ${m.version}")
-                if (m.author.isNotEmpty()) {
-                    if (isNotEmpty()) append(" · ")
-                    append(m.author)
-                }
-                if (m.uniqueId.isNotEmpty()) {
-                    if (isNotEmpty()) append('\n')
-                    append(m.uniqueId)
-                }
-                if (isNotEmpty()) append('\n')
-                append("目录：Mods/${m.folderName}")
-                if (m.description.isNotEmpty()) {
-                    append("\n\n")
-                    append(m.description)
-                }
-            }
-        },
+        summary = dialogSummary,
         onDismissRequest = {
             showModDialog = false
             confirmDelete = false
@@ -871,7 +908,7 @@ private fun ModsTabContent(
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (confirmDelete) {
                     Text(
-                        text = "将彻底删除 Mods/${dialogMod.folderName}，确认继续？",
+                        text = stringResource(R.string.mod_dialog_confirm_delete, dialogMod.folderName),
                         fontSize = 13.sp,
                         color = MiuixTheme.colorScheme.error,
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -881,13 +918,13 @@ private fun ModsTabContent(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         TextButton(
-                            text = "取消",
+                            text = stringResource(R.string.btn_cancel),
                             onClick = { confirmDelete = false },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.textButtonColors()
                         )
                         TextButton(
-                            text = "确认删除",
+                            text = stringResource(R.string.btn_confirm_delete),
                             onClick = {
                                 showModDialog = false
                                 onDeleteMod(dialogMod)
@@ -905,7 +942,7 @@ private fun ModsTabContent(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         TextButton(
-                            text = if (dialogMod.enabled) "禁用" else "启用",
+                            text = stringResource(if (dialogMod.enabled) R.string.btn_disable else R.string.btn_enable),
                             onClick = {
                                 showModDialog = false
                                 onToggleMod(dialogMod, !dialogMod.enabled)
@@ -914,7 +951,7 @@ private fun ModsTabContent(
                             colors = ButtonDefaults.textButtonColors()
                         )
                         TextButton(
-                            text = "删除",
+                            text = stringResource(R.string.btn_delete),
                             onClick = { confirmDelete = true },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.textButtonColors(
@@ -925,7 +962,7 @@ private fun ModsTabContent(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     TextButton(
-                        text = "关闭",
+                        text = stringResource(R.string.btn_close),
                         onClick = { showModDialog = false },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.textButtonColorsPrimary()
@@ -948,6 +985,7 @@ private fun LogsTabContent(
 ) {
     val hasRoot = rootState?.hasRoot == true
     var source by rememberSaveable { mutableStateOf(LogSource.Smapi) }
+    val sourceLabel = stringResource(source.labelRes)
 
     val activeLogText = when (source) {
         LogSource.Smapi -> rootState?.latestLog
@@ -979,7 +1017,7 @@ private fun LogsTabContent(
                     LogSource.entries.forEach { entry ->
                         val selected = source == entry
                         TextButton(
-                            text = entry.label,
+                            text = stringResource(entry.labelRes),
                             onClick = { source = entry },
                             modifier = Modifier.weight(1f),
                             colors = if (selected) {
@@ -999,17 +1037,17 @@ private fun LogsTabContent(
                 ) {
                     if (rootState != null && !hasRoot) {
                         TextButton(
-                            text = "授予 Root",
+                            text = stringResource(R.string.btn_grant_root),
                             onClick = onRequestRoot,
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.textButtonColorsPrimary()
                         )
                     } else {
                         TextButton(
-                            text = "复制日志",
+                            text = stringResource(R.string.btn_copy_log),
                             onClick = {
                                 if (!activeLogText.isNullOrBlank()) {
-                                    onCopyLog(source.label, activeLogText)
+                                    onCopyLog(sourceLabel, activeLogText)
                                 }
                             },
                             enabled = !activeLogText.isNullOrBlank(),
@@ -1018,7 +1056,7 @@ private fun LogsTabContent(
                         )
                     }
                     TextButton(
-                        text = "刷新",
+                        text = stringResource(R.string.btn_refresh),
                         onClick = onRefresh,
                         colors = ButtonDefaults.textButtonColors()
                     )
@@ -1033,7 +1071,7 @@ private fun LogsTabContent(
                     insideMargin = PaddingValues(16.dp)
                 ) {
                     Text(
-                        text = "正在读取日志...",
+                        text = stringResource(R.string.logs_loading),
                         fontSize = 13.sp,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary
                     )
@@ -1046,7 +1084,7 @@ private fun LogsTabContent(
                     insideMargin = PaddingValues(16.dp)
                 ) {
                     Text(
-                        text = "授予 Root 权限后可查看 SMAPI-latest.txt 与引导日志。",
+                        text = stringResource(R.string.logs_no_root),
                         fontSize = 13.sp,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary
                     )
@@ -1059,7 +1097,7 @@ private fun LogsTabContent(
                     insideMargin = PaddingValues(16.dp)
                 ) {
                     Text(
-                        text = "暂无${source.label}，启动一次星露谷后会在此生成记录。",
+                        text = stringResource(R.string.logs_empty, sourceLabel),
                         fontSize = 13.sp,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary
                     )
@@ -1106,18 +1144,23 @@ private fun SectionTitle(text: String) {
     )
 }
 
-private fun buildModRowSummary(mod: InstalledModInfo): String = buildString {
-    if (!mod.enabled) append("已禁用")
-    if (mod.version.isNotEmpty()) {
-        if (isNotEmpty()) append(" · ")
-        append("v${mod.version}")
-    }
-    if (mod.author.isNotEmpty()) {
-        if (isNotEmpty()) append(" · ")
-        append(mod.author)
-    }
-    if (isEmpty()) {
-        append(if (mod.hasManifest) mod.folderName else "模组包目录")
+@Composable
+private fun buildModRowSummary(mod: InstalledModInfo): String {
+    val disabledText = stringResource(R.string.mod_row_disabled)
+    val folderFallback = stringResource(R.string.mod_row_folder_fallback)
+    return buildString {
+        if (!mod.enabled) append(disabledText)
+        if (mod.version.isNotEmpty()) {
+            if (isNotEmpty()) append(" · ")
+            append("v${mod.version}")
+        }
+        if (mod.author.isNotEmpty()) {
+            if (isNotEmpty()) append(" · ")
+            append(mod.author)
+        }
+        if (isEmpty()) {
+            append(if (mod.hasManifest) mod.folderName else folderFallback)
+        }
     }
 }
 
@@ -1215,7 +1258,7 @@ private object TabIcons {
 
 private data class ModuleSnapshot(
     val connected: Boolean,
-    val frameworkDesc: String,
+    val frameworkDesc: String?,
     val inScope: Boolean,
     val enableSmapi: Boolean,
     val smapiLabel: String,

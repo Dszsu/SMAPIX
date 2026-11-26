@@ -1,8 +1,10 @@
 package io.github.dszsu.smapix
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.core.content.edit
 import io.github.dszsu.smapix.xposed.SmapiXposedModule
 import io.github.libxposed.service.XposedService
 import org.json.JSONObject
@@ -60,24 +62,15 @@ private data class ModManifestFields(
 
 object SmapiPackageHelper {
 
-    private val TARGET_FILES_EXTERNAL =
+    private const val TARGET_FILES_EXTERNAL =
         "/storage/emulated/0/Android/data/${SmapiXposedModule.TARGET_PACKAGE}/files"
-    private val TARGET_MODS_DIR = "$TARGET_FILES_EXTERNAL/Mods"
-    private val REAL_MODS_DIR =
+    private const val TARGET_MODS_DIR = "$TARGET_FILES_EXTERNAL/Mods"
+    private const val REAL_MODS_DIR =
         "/data/media/0/Android/data/${SmapiXposedModule.TARGET_PACKAGE}/files/Mods"
-    private val TARGET_SMAPI_LOG = "$TARGET_FILES_EXTERNAL/ErrorLogs/SMAPI-latest.txt"
-    private val TARGET_BOOTSTRAP_LOG =
+    private const val TARGET_SMAPI_LOG = "$TARGET_FILES_EXTERNAL/ErrorLogs/SMAPI-latest.txt"
+    @SuppressLint("SdCardPath")
+    private const val TARGET_BOOTSTRAP_LOG =
         "/data/user/0/${SmapiXposedModule.TARGET_PACKAGE}/files/smapix/bootstrap.log"
-
-    private val IGNORED_DIR_NAMES = setOf(
-        ".DS_Store",
-        ".nomedia",
-        ".git",
-        ".trash",
-        ".Trash",
-        ".thumbnails",
-        "__MACOSX"
-    )
 
     fun importSmapiZip(
         context: Context,
@@ -112,12 +105,12 @@ object SmapiPackageHelper {
                 }
             }
 
-            require(hasSmapiDll) { "所选压缩包不含 StardewModdingAPI.dll，请选择 SMAPI-Android-*.zip" }
+            require(hasSmapiDll) { context.getString(R.string.err_zip_missing_smapi_dll) }
 
             val sizeBytes = cacheTmp.length()
             val stamp = "${sizeBytes}:${System.currentTimeMillis()}"
 
-            val activeService = service ?: error("LSPosed 服务未连接，请先在 LSPosed 中启用 SMAPIX")
+            val activeService = service ?: error(context.getString(R.string.err_lsposed_service_missing))
             runCatching { activeService.deleteRemoteFile(SmapiXposedModule.REMOTE_SMAPI_ZIP) }
 
             val pfd = activeService.openRemoteFile(SmapiXposedModule.REMOTE_SMAPI_ZIP)
@@ -130,13 +123,15 @@ object SmapiPackageHelper {
             }
 
             val prefs = activeService.getRemotePreferences(SmapiXposedModule.PREFS_CONFIG)
-            prefs.edit()
-                .putString(SmapiXposedModule.KEY_SMAPI_STAMP, stamp)
-                .putString("smapi_version_label", detectedVersion.ifEmpty { "SMAPI-Android" })
-                .apply()
+            prefs.edit {
+                putString(SmapiXposedModule.KEY_SMAPI_STAMP, stamp)
+                putString("smapi_version_label", detectedVersion.ifEmpty { "SMAPI-Android" })
+            }
 
             ImportedSmapiInfo(
-                versionLabel = detectedVersion.ifEmpty { "SMAPI-Android ($fileCount 文件)" },
+                versionLabel = detectedVersion.ifEmpty {
+                    context.resources.getQuantityString(R.plurals.smapi_version_files_fallback, fileCount, fileCount)
+                },
                 fileCount = fileCount,
                 sizeBytes = sizeBytes,
                 stamp = stamp
@@ -155,7 +150,7 @@ object SmapiPackageHelper {
         val stageRoot = File(context.cacheDir, "mod_stage_${System.currentTimeMillis()}")
         try {
             copyUriToFile(context, uri, tmpZip)
-            requireZipSignature(tmpZip)
+            requireZipSignature(context, tmpZip)
 
             val fallbackName = queryDisplayName(context, uri)
                 ?.substringBeforeLast('.')
@@ -171,7 +166,7 @@ object SmapiPackageHelper {
                     it.normPath.substringAfterLast('/').equals("manifest.json", ignoreCase = true)
                 }
                 require(manifestEntries.isNotEmpty()) {
-                    "压缩包内未找到 manifest.json，请选择有效的 SMAPI zip 模组包"
+                    context.getString(R.string.err_zip_missing_manifest)
                 }
 
                 // Keep only top-most mod roots so internal assets/manifest.json files aren't split into separate mods.
@@ -219,15 +214,15 @@ object SmapiPackageHelper {
                     val stageCanonical = targetStageDir.canonicalPath
 
                     val rootPrefix = if (modRoot.isEmpty()) "" else "$modRoot/"
-                    for (item in validEntries) {
-                        if (rootPrefix.isNotEmpty() && !item.normPath.startsWith(rootPrefix)) continue
-                        val rel = if (rootPrefix.isEmpty()) item.normPath else item.normPath.removePrefix(rootPrefix)
+                    for ((normPath, entry) in validEntries) {
+                        if (rootPrefix.isNotEmpty() && !normPath.startsWith(rootPrefix)) continue
+                        val rel = if (rootPrefix.isEmpty()) normPath else normPath.removePrefix(rootPrefix)
                         if (rel.isEmpty()) continue
 
                         val outFile = File(targetStageDir, rel)
                         if (!outFile.canonicalPath.startsWith(stageCanonical + File.separator)) continue
                         outFile.parentFile?.mkdirs()
-                        zip.getInputStream(item.entry).use { inp ->
+                        zip.getInputStream(entry).use { inp ->
                             FileOutputStream(outFile).use { out -> inp.copyTo(out) }
                         }
                         extractedFiles++
@@ -240,7 +235,7 @@ object SmapiPackageHelper {
                 Triple(names.toList(), folders.toList(), extractedFiles)
             }
 
-            require(requestRootPermission()) { "未获得 Root 权限，无法写入 Mods 目录" }
+            require(requestRootPermission()) { context.getString(R.string.err_root_required_mods) }
 
             val modsQ = shellQuote(TARGET_MODS_DIR)
             val realModsQ = shellQuote(REAL_MODS_DIR)
@@ -248,34 +243,34 @@ object SmapiPackageHelper {
             val installScript = buildString {
                 append("set -e; ")
                 append("mkdir -p $modsQ; ")
-                append("ug=\$(stat -c '%u:%g' $realModsQ 2>/dev/null || stat -c '%u:%g' $modsQ 2>/dev/null || true); ")
+                append($$"ug=$(stat -c '%u:%g' $$realModsQ 2>/dev/null || stat -c '%u:%g' $$modsQ 2>/dev/null || true); ")
                 append("for src in $stageQ/*; do ")
-                append("[ -d \"\$src\" ] || continue; ")
-                append("name=\"\${src##*/}\"; ")
-                append("dst=$modsQ/\"\$name\"; ")
-                append("disabled_dst=$modsQ/.\"\$name\"; ")
-                append("target_name=\"\$name\"; ")
+                append($$"[ -d \"$src\" ] || continue; ")
+                append($$"name=\"${src##*/}\"; ")
+                append($$"dst=$$modsQ/\"$name\"; ")
+                append($$"disabled_dst=$$modsQ/.\"$name\"; ")
+                append($$"target_name=\"$name\"; ")
                 // Preserve user config.json when updating an existing enabled or disabled mod
-                append("if [ -f \"\$dst/config.json\" ] && [ ! -f \"\$src/config.json\" ]; then ")
-                append("cp \"\$dst/config.json\" \"\$src/config.json\"; ")
-                append("elif [ -f \"\$disabled_dst/config.json\" ] && [ ! -f \"\$src/config.json\" ]; then ")
-                append("cp \"\$disabled_dst/config.json\" \"\$src/config.json\"; ")
+                append($$"if [ -f \"$dst/config.json\" ] && [ ! -f \"$src/config.json\" ]; then ")
+                append($$"cp \"$dst/config.json\" \"$src/config.json\"; ")
+                append($$"elif [ -f \"$disabled_dst/config.json\" ] && [ ! -f \"$src/config.json\" ]; then ")
+                append($$"cp \"$disabled_dst/config.json\" \"$src/config.json\"; ")
                 append("fi; ")
-                append("if [ -d \"\$disabled_dst\" ] && [ ! -d \"\$dst\" ]; then dst=\"\$disabled_dst\"; target_name=.\"\$name\"; fi; ")
-                append("rm -rf \"\$dst\"; ")
-                append("cp -r \"\$src\" \"\$dst\"; ")
-                append("chmod -R ug+rwX,o-rwx \"\$dst\" 2>/dev/null || chmod -R 0770 \"\$dst\" 2>/dev/null || true; ")
-                append("real_dst=$realModsQ/\"\$target_name\"; ")
-                append("if [ -n \"\$ug\" ] && [ -e \"\$real_dst\" ]; then ")
-                append("chown -R \"\$ug\" \"\$real_dst\" 2>/dev/null || true; ")
-                append("chmod -R ug+rwX,o-rwx \"\$real_dst\" 2>/dev/null || true; ")
+                append($$"if [ -d \"$disabled_dst\" ] && [ ! -d \"$dst\" ]; then dst=\"$disabled_dst\"; target_name=.\"$name\"; fi; ")
+                append($$"rm -rf \"$dst\"; ")
+                append($$"cp -r \"$src\" \"$dst\"; ")
+                append($$"chmod -R ug+rwX,o-rwx \"$dst\" 2>/dev/null || chmod -R 0770 \"$dst\" 2>/dev/null || true; ")
+                append($$"real_dst=$$realModsQ/\"$target_name\"; ")
+                append($$"if [ -n \"$ug\" ] && [ -e \"$real_dst\" ]; then ")
+                append($$"chown -R \"$ug\" \"$real_dst\" 2>/dev/null || true; ")
+                append($$"chmod -R ug+rwX,o-rwx \"$real_dst\" 2>/dev/null || true; ")
                 append("fi; ")
                 append("done")
             }
 
-            val result = runSuCommandDetailed(installScript, timeoutMs = 20_000)
+            val result = runSuCommandDetailed(installScript, timeoutMs = 20_000, context = context)
             check(result.exitCode == 0) {
-                result.stderr.ifBlank { "Root 复制模组目录失败 (exit=${result.exitCode})" }
+                result.stderr.ifBlank { context.getString(R.string.err_root_copy_mods_failed, result.exitCode) }
             }
 
             ModInstallResult(
@@ -292,10 +287,10 @@ object SmapiPackageHelper {
     /**
      * Toggles a mod using SMAPI's native dot-prefix ignore convention (`Foo` <-> `.Foo`).
      */
-    fun setModEnabled(folderName: String, enable: Boolean): Result<String> = runCatching {
-        validateSingleFolderName(folderName)
+    fun setModEnabled(context: Context, folderName: String, enable: Boolean): Result<String> = runCatching {
+        validateSingleFolderName(context, folderName)
         val cleanName = folderName.removePrefix(".")
-        require(cleanName.isNotEmpty()) { "无效的模组目录名" }
+        require(cleanName.isNotEmpty()) { context.getString(R.string.err_invalid_mod_folder) }
 
         val targetName = if (enable) cleanName else ".$cleanName"
         if (folderName == targetName) return@runCatching targetName
@@ -303,20 +298,28 @@ object SmapiPackageHelper {
         val srcQ = shellQuote("$TARGET_MODS_DIR/$folderName")
         val dstQ = shellQuote("$TARGET_MODS_DIR/$targetName")
         val script = buildString {
-            append("if [ ! -d $srcQ ]; then echo '目录不存在' >&2; exit 2; fi; ")
-            append("if [ -e $dstQ ]; then echo '目标名称已存在冲突目录: $targetName' >&2; exit 3; fi; ")
+            append("if [ ! -d $srcQ ]; then exit 2; fi; ")
+            append("if [ -e $dstQ ]; then exit 3; fi; ")
             append("mv $srcQ $dstQ")
         }
-        val res = runSuCommandDetailed(script, timeoutMs = 5000)
-        check(res.exitCode == 0) { res.stderr.ifBlank { "切换状态失败" } }
+        val res = runSuCommandDetailed(script, timeoutMs = 5000, context = context)
+        check(res.exitCode == 0) {
+            when (res.exitCode) {
+                2 -> context.getString(R.string.err_mod_folder_not_found)
+                3 -> context.getString(R.string.err_mod_conflict_exists, targetName)
+                else -> res.stderr.ifBlank { context.getString(R.string.err_toggle_failed) }
+            }
+        }
         targetName
     }
 
-    fun deleteModFolder(folderName: String): Result<Unit> = runCatching {
-        validateSingleFolderName(folderName)
+    fun deleteModFolder(context: Context, folderName: String): Result<Unit> = runCatching {
+        validateSingleFolderName(context, folderName)
         val targetQ = shellQuote("$TARGET_MODS_DIR/$folderName")
-        val res = runSuCommandDetailed("rm -rf $targetQ", timeoutMs = 8000)
-        check(res.exitCode == 0) { res.stderr.ifBlank { "删除失败" } }
+        val res = runSuCommandDetailed("rm -rf $targetQ", timeoutMs = 8000, context = context)
+        check(res.exitCode == 0) {
+            res.stderr.ifBlank { context.getString(R.string.err_delete_mod_failed) }
+        }
     }
 
     fun readStardewVersion(context: Context): String? = runCatching {
@@ -334,22 +337,22 @@ object SmapiPackageHelper {
         val bootLogQ = shellQuote(TARGET_BOOTSTRAP_LOG)
 
         val script = buildString {
-            append("if [ \"\$(id -u)\" = \"0\" ]; then echo '__ROOT_OK__'; ")
+            append("if [ \"$(id -u)\" = \"0\" ]; then echo '__ROOT_OK__'; ")
             append("if [ -d $modsQ ]; then ")
             append("for d in $modsQ/* $modsQ/.*; do ")
-            append("[ -d \"\$d\" ] || continue; ")
-            append("b=\"\${d##*/}\"; ")
-            append("[ \"\$b\" = '.' ] || [ \"\$b\" = '..' ] && continue; ")
-            append("case \"\$b\" in .DS_Store|.nomedia|.git|.trash|.Trash|.thumbnails|._*|__MACOSX) continue ;; esac; ")
+            append($$"[ -d \"$d\" ] || continue; ")
+            append($$"b=\"${d##*/}\"; ")
+            append($$"[ \"$b\" = '.' ] || [ \"$b\" = '..' ] && continue; ")
+            append($$"case \"$b\" in .DS_Store|.nomedia|.git|.trash|.Trash|.thumbnails|._*|__MACOSX) continue ;; esac; ")
             append("echo '__MOD_ITEM__'; ")
-            append("printf '%s\\n' \"\$b\"; ")
+            append($$"printf '%s\\n' \"$b\"; ")
             append("m=''; ")
-            append("for c in \"\$d/manifest.json\" \"\$d/Manifest.json\"; do ")
-            append("if [ -f \"\$c\" ]; then m=\"\$c\"; break; fi; ")
+            append($$"for c in \"$d/manifest.json\" \"$d/Manifest.json\"; do ")
+            append($$"if [ -f \"$c\" ]; then m=\"$c\"; break; fi; ")
             append("done; ")
-            append("if [ -n \"\$m\" ]; then ")
+            append($$"if [ -n \"$m\" ]; then ")
             append("echo '__HAS_MANIFEST__'; ")
-            append("head -c 4096 \"\$m\" 2>/dev/null; ")
+            append($$"head -c 4096 \"$m\" 2>/dev/null; ")
             append("echo ''; ")
             append("fi; ")
             append("echo '__MOD_END__'; ")
@@ -436,15 +439,15 @@ object SmapiPackageHelper {
     private fun copyUriToFile(context: Context, uri: Uri, dst: File) {
         context.contentResolver.openInputStream(uri)?.use { input ->
             FileOutputStream(dst).use { output -> input.copyTo(output) }
-        } ?: error("无法读取所选压缩包")
+        } ?: error(context.getString(R.string.err_read_archive_failed))
     }
 
-    private fun requireZipSignature(file: File) {
-        require(file.length() >= 4) { "所选文件为空或无效" }
+    private fun requireZipSignature(context: Context, file: File) {
+        require(file.length() >= 4) { context.getString(R.string.err_file_empty_invalid) }
         val header = ByteArray(2)
         file.inputStream().use { it.read(header) }
         require(header[0] == 0x50.toByte() && header[1] == 0x4B.toByte()) {
-            "仅支持 .zip 格式模组包（检测到非 zip 文件，如 rar/7z 请先转为 zip）"
+            context.getString(R.string.err_not_zip_archive)
         }
     }
 
@@ -498,7 +501,7 @@ object SmapiPackageHelper {
             .trimStart('.')
             .trim()
 
-    private fun validateSingleFolderName(folderName: String) {
+    private fun validateSingleFolderName(context: Context, folderName: String) {
         require(
             folderName.isNotEmpty() &&
                 folderName != "." &&
@@ -506,7 +509,7 @@ object SmapiPackageHelper {
                 !folderName.contains('/') &&
                 !folderName.contains('\\') &&
                 !folderName.contains('\u0000')
-        ) { "非法目录名" }
+        ) { context.getString(R.string.err_invalid_folder_name) }
     }
 
     private fun parseManifestLenient(raw: String): ModManifestFields {
@@ -558,17 +561,17 @@ object SmapiPackageHelper {
                 }
                 i++
             } else {
-                when {
-                    c == '"' -> {
+                when (c) {
+                    '"' -> {
                         inString = true
                         noComments.append(c)
                         i++
                     }
-                    c == '/' && next == '/' -> {
+                    '/' if next == '/' -> {
                         i += 2
                         while (i < input.length && input[i] != '\n') i++
                     }
-                    c == '/' && next == '*' -> {
+                    '/' if next == '*' -> {
                         i += 2
                         while (i + 1 < input.length && !(input[i] == '*' && input[i + 1] == '/')) i++
                         i = (i + 2).coerceAtMost(input.length)
@@ -631,7 +634,7 @@ object SmapiPackageHelper {
             if (res.exitCode == 0) res.stdout else null
         }.getOrNull()
 
-    private fun runSuCommandDetailed(cmd: String, timeoutMs: Long): SuResult {
+    private fun runSuCommandDetailed(cmd: String, timeoutMs: Long, context: Context? = null): SuResult {
         val proc = ProcessBuilder("su", "-c", cmd).start()
         var stdout = ""
         var stderr = ""
@@ -640,7 +643,7 @@ object SmapiPackageHelper {
         val finished = proc.waitFor(timeoutMs, TimeUnit.MILLISECONDS)
         if (!finished) {
             proc.destroyForcibly()
-            return SuResult(-1, stdout, "Root 命令执行超时")
+            return SuResult(-1, stdout, context?.getString(R.string.err_root_cmd_timeout) ?: "Root command timed out")
         }
         outThread.join(1000)
         errThread.join(1000)

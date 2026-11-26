@@ -17,8 +17,6 @@ public:
     // pure .NET 9.0.8 BCL assembly in our replacement index. Caller must free(*out_buf).
     bool TryLoadReplacement(const char *image_name, uint8_t **out_buf, uint32_t *out_len) const;
 
-    size_t Count() const { return entries_.size(); }
-
 private:
     std::unordered_map<std::string, std::string> entries_;
 };

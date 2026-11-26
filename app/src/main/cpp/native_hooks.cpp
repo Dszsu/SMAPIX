@@ -142,9 +142,9 @@ bool LoadMonoApi(MonoApi *api) {
     };
 
     bool ok = true;
-    api->mono_get_root_domain = reinterpret_cast<MonoDomain *(*)(void)>(ResolveMonoSym("mono_get_root_domain"));
+    api->mono_get_root_domain = reinterpret_cast<MonoDomain *(*)()>(ResolveMonoSym("mono_get_root_domain"));
     ok &= load(api->mono_domain_get, "mono_domain_get");
-    api->mono_thread_current = reinterpret_cast<MonoThread *(*)(void)>(ResolveMonoSym("mono_thread_current"));
+    api->mono_thread_current = reinterpret_cast<MonoThread *(*)()>(ResolveMonoSym("mono_thread_current"));
     ok &= load(api->mono_jit_thread_attach, "mono_jit_thread_attach");
     ok &= load(api->mono_domain_assembly_open, "mono_domain_assembly_open");
     api->mono_assembly_open = reinterpret_cast<MonoAssembly *(*)(const char *, int *)>(ResolveMonoSym("mono_assembly_open"));

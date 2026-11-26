@@ -64,11 +64,17 @@ android {
             excludes += "META-INF/NOTICE*"
         }
     }
+
+    lint {
+        // Target game (Stardew Valley) and Mono runtime only ship arm64-v8a binaries.
+        disable += "ChromeOsAbiSupport"
+    }
 }
 
 dependencies {
     compileOnly(libs.libxposed.api)
     implementation(libs.libxposed.service)
+    implementation(libs.androidx.core.ktx)
     implementation(libs.kotlin.stdlib)
     implementation(libs.activity.compose)
     implementation(libs.compose.runtime)
