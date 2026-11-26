@@ -1,0 +1,26 @@
+[versions]
+agp = "9.5.2"
+kotlin = "2.4.21"
+xposed-api = "102.0.0"
+xposed-service = "102.0.0"
+shadowhook = "2.0.1"
+activity-compose = "1.13.0"
+miuix = "0.9.5-beta02"
+hiddenapibypass = "6.2"
+junit = "4.13.2"
+
+[plugins]
+agp-app = { id = "com.android.application", version.ref = "agp" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+
+[libraries]
+libxposed-api = { group = "io.github.libxposed", name = "api", version.ref = "xposed-api" }
+libxposed-service = { group = "io.github.libxposed", name = "service", version.ref = "xposed-service" }
+shadowhook = { group = "com.bytedance.android", name = "shadowhook", version.ref = "shadowhook" }
+activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
+compose-runtime = { group = "androidx.compose.runtime", name = "runtime" }
+kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
+miuix-ui = { group = "top.yukonga.miuix.kmp", name = "miuix-ui", version.ref = "miuix" }
+miuix-preference = { group = "top.yukonga.miuix.kmp", name = "miuix-preference", version.ref = "miuix" }
+hiddenapibypass = { group = "org.lsposed.hiddenapibypass", name = "hiddenapibypass", version.ref = "hiddenapibypass" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }

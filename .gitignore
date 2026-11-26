@@ -1,0 +1,36 @@
+# Gradle & Kotlin
+.gradle/
+.kotlin/
+build/
+**/build/
+local.properties
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+captures/
+
+# CMake / NDK
+.cxx/
+**/.cxx/
+
+# .NET (managed/ & tools/)
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.userprefs
+
+# Build outputs & signing keys
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+*.jks
+*.keystore
+
+# Logs & OS files
+*.log
+.DS_Store
+Thumbs.db
